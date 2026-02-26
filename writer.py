@@ -1,19 +1,20 @@
 import os
-import google.generativeai as genai
+import dashscope
+from dashscope import Generation
 from prompts import WECHAT_COPY_PROMPT
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
 
 def write_copy(image_description):
-    # 换回最稳的模型名字
-    model = genai.GenerativeModel('gemini-1.5-flash')
     prompt = WECHAT_COPY_PROMPT.format(image_description=image_description)
-    
     try:
-        response = model.generate_content(
-            prompt, 
-            request_options={"timeout": 60}
+        response = Generation.call(
+            model='qwen-plus',
+            prompt=prompt
         )
-        return response.text if response.candidates else "文案生成失败"
+        if response.status_code == 200:
+            return response.output.text
+        else:
+            return f"文案生成报错: {response.message}"
     except Exception as e:
-        return f"文案API报错: {str(e)}"
+        return f"系统错误: {str(e)}"

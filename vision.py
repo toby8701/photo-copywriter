@@ -1,33 +1,31 @@
 import os
-import google.generativeai as genai
+import dashscope
+from dashscope import MultiModalConversation
 from prompts import IMAGE_UNDERSTANDING_PROMPT
 
-# 配置 Key
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
 
 def understand_images(image_base64_list):
-    # 【关键修改】只写模型简称，不带任何路径前缀
-    # 如果 gemini-1.5-flash 报错，就用 gemini-pro-vision (这是老牌兼容版)
+    # 构造通义千问要求的格式
+    messages = [{
+        'role': 'user',
+        'content': [{'text': IMAGE_UNDERSTANDING_PROMPT}]
+    }]
+    
+    # 阿里要求 base64 必须带上头
+    for img_b64 in image_base64_list[:3]: # 先取3张防止超时
+        messages[0]['content'].append({
+            'image': f'data:image/jpeg;base64,{img_b64}'
+        })
+
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        if not image_base64_list:
-            return "错误：未接收到图片"
-
-        img_data = image_base64_list[0]
-        content = [
-            {"mime_type": "image/jpeg", "data": img_data},
-            IMAGE_UNDERSTANDING_PROMPT
-        ]
-
-        # 增加超时限制
-        response = model.generate_content(
-            content,
-            request_options={"timeout": 60}
+        responses = MultiModalConversation.call(
+            model='qwen-vl-max', # 阿里最强的视觉模型
+            messages=messages
         )
-        return response.text if response.candidates else "AI返回空结果"
+        if responses.status_code == 200:
+            return responses.output.choices[0].message.content[0]['text']
+        else:
+            return f"阿里API报错: {responses.message}"
     except Exception as e:
-        # 如果 1.5-flash 还是 404，尝试自动降级到 pro 版
-        if "404" in str(e):
-            return f"模型路径错误，请检查API Key权限。具体报错: {str(e)}"
-        return f"生成失败: {str(e)}"
+        return f"系统错误: {str(e)}"
