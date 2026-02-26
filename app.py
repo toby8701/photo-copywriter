@@ -1,3 +1,12 @@
+import os
+import base64
+import uvicorn
+from fastapi import FastAPI, UploadFile, File
+
+# 确保这些文件在 GitHub 中没有 .txt 后缀
+from vision import understand_images
+from writer import write_copy
+
 app = FastAPI()
 
 @app.post("/generate")
