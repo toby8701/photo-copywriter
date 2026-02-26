@@ -1,28 +1,27 @@
-import openai
+import os
+import google.generativeai as genai
 from prompts import IMAGE_UNDERSTANDING_PROMPT
 
-openai.api_key = "YOUR_API_KEY"
+# 配置 API Key
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-def understand_images(image_files):
-    messages = [
-        {"role": "system", "content": IMAGE_UNDERSTANDING_PROMPT}
-    ]
+def understand_images(image_base64_list):
+    # 使用支持多模态的 Gemini 1.5 Flash 模型
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    # 构建内容列表：提示词 + 所有图片数据
+    content = [IMAGE_UNDERSTANDING_PROMPT]
+    
+    for img_data in image_base64_list:
+        content.append({
+            "mime_type": "image/jpeg",
+            "data": img_data
+        })
 
-    for img in image_files:
-        messages.append({
-            "role": "user",
-            "content": [
-                {
-                    "type": "image",
-                    "image_url": f"data:image/jpeg;base64,{img}"
-                }
-            ]
-        )
-
-    resp = openai.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=messages,
-        temperature=0.4
-    )
-
-    return resp.choices[0].message.content
+    # 发送给 Gemini 进行识别
+    response = model.generate_content(content)
+    
+    if response.candidates:
+        return response.text
+    else:
+        return "图片识别失败，请检查图片格式。"
