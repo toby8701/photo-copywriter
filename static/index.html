@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <h3>照片 → 朋友圈文案</h3>
+
+  <input type="file" id="files" multiple />
+  <br/><br/>
+  <button onclick="go()">生成</button>
+
+  <pre id="result"></pre>
+
+<script>
+async function go() {
+  const files = document.getElementById("files").files
+  const formData = new FormData()
+  for (let f of files) formData.append("files", f)
+
+  const res = await fetch("/generate", {
+    method: "POST",
+    body: formData
+  })
+
+  const data = await res.json()
+  document.getElementById("result").innerText = data.copy
+}
+</script>
+</body>
+</html>
